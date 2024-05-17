@@ -1,4 +1,5 @@
 from tkinter import *
+from tkinter import messagebox
 import random
 
 FONT_NAME = "Courier"
@@ -34,13 +35,26 @@ def save_password():
     username = username_entry.get()
     password = password_entry.get()
     print(website,username,password)
-    # 创建一行要写入的数据
-    data_line=f"{website} | {username} | {password}\n"
 
-    # 追加写入文件，如果文件不存在则创建
-    with open(OUTPUT_FILE_PATH, "a") as file:
-        file.write(data_line)
-    # 清除Entry中的内容
+    if not website or not username or not password:
+        # print("Please fill in all fields")
+        messagebox.showwarning(
+            title="Oops",
+            message="Please don't leave any fields enpty!"
+        )
+    else:
+        # 创建一行要写入的数据
+        data_line=f"{website} | {username} | {password}\n"
+        bubbles_message = f"These are the details entered:\n website:{website} \n username: {username} \n password:{password}\n Is it ok to save?"
+        user_check = messagebox.askyesno(title="Form",
+                               message=bubbles_message,
+                               icon='info')
+
+        if user_check:
+            # 追加写入文件，如果文件不存在则创建
+            with open(OUTPUT_FILE_PATH, "a") as file:
+                file.write(data_line)
+            # 清除Entry中的内容
     website_entry.delete(0, END)
     password_entry.delete(0, END)
 # ---------------------------- UI SETUP ------------------------------- #
