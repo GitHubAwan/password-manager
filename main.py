@@ -9,6 +9,8 @@ import pyperclip #当点击创建密码时自动复制到剪贴板。https://pyp
 FONT_NAME = "Courier"
 DATABASE_PATH = "data/password_manager.db"
 user_id_mumber = 0
+password_dict = {}  # 用于存储实际密码的字典
+
 # ---------------------------- PASSWORD GENERATOR ------------------------------- #
 
 def generate_password():
@@ -131,10 +133,19 @@ def display_all_data():
     for item in tree.get_children():
         tree.delete(item)
 
+    # if rows:
+    #     for row in rows:
+    #         tree.insert("", END, values=(row["website"], row["username"], row["password"]))
+
+    # 清空密码字典
+    password_dict.clear()
+
     if rows:
         for row in rows:
-            tree.insert("", END, values=(row["website"], row["username"], row["password"]))
-
+            masked_password = '*' * len(row["password"])  # 将密码替换为星号
+            tree.insert("", END, values=(row["website"], row["username"], masked_password))
+            # 将实际密码保存到字典中
+            password_dict[(row["website"], row["username"])] = row["password"]
 
 # ---------------------------- ITEM SELECTED EVENT ------------------------------- #
 
@@ -149,12 +160,18 @@ def on_item_selected(event):
         website_entry.insert(0, values[0])
         username_entry.delete(0, END)
         username_entry.insert(0, values[1])
-        password_entry.delete(0, END)
-        password_entry.insert(0, values[2])
+        # password_entry.delete(0, END)
+        # password_entry.insert(0, values[2])
 
-        # 当点击时密码自动复制到剪贴板。https://pypi.org/project/pyperclip/
-        password=password_entry.get()
-        pyperclip.copy(password)
+        password_entry.delete(0, END)
+        masked_password = '*' * len(password_dict[(values[0], values[1])])
+        password_entry.insert(0, masked_password)  # 显示星号密码
+        # 获取实际密码并复制到剪贴板
+        actual_password = password_dict[(values[0], values[1])]
+        pyperclip.copy(actual_password)
+        # # 当点击时密码自动复制到剪贴板。https://pypi.org/project/pyperclip/
+        # password=password_entry.get()
+        # pyperclip.copy(password)
 
         # 获取主键值
         website=website_entry.get()
