@@ -1,14 +1,12 @@
 import sqlite3
 import os
 from tkinter import *
-from tkinter import messagebox
+from tkinter import messagebox,ttk
 import random
 import pyperclip #当点击创建密码时自动复制到剪贴板。https://pypi.org/project/pyperclip/
 
 
 FONT_NAME = "Courier"
-# OUTPUT_FILE_PATH ="data/data_password_manager.txt"
-# OUTPUT_FILE_PATH ="data/data_password_manager.json"
 DATABASE_PATH = "data/password_manager.db"
 # ---------------------------- PASSWORD GENERATOR ------------------------------- #
 
@@ -90,7 +88,7 @@ def save_password():
 # ---------------------------- SEARCH ------------------------------- #
 def search():
     website=website_entry.get()
-    # 连接到SQLite数据库（如果数据库不存在会自动创建）
+    # 连接到SQLite数据库
     conn = sqlite3.connect(DATABASE_PATH)
     conn.row_factory = sqlite3.Row  # 设置行工厂,这行很关健
     cursor = conn.cursor()
@@ -117,6 +115,40 @@ def search():
     website_entry.delete(0, END)
     password_entry.delete(0, END)
 
+# ---------------------------- Display ALL DATA ------------------------------- #
+
+def display_all_data():
+    # 连接到SQLite数据库
+    conn = sqlite3.connect(DATABASE_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute('''SELECT * FROM passwords''')
+    rows = cursor.fetchall()
+    conn.close()
+
+    # 清空Treeview内容
+    for item in tree.get_children():
+        tree.delete(item)
+
+    if rows:
+        for row in rows:
+            tree.insert("", END, values=(row["website"], row["username"], row["password"]))
+
+
+# ---------------------------- ITEM SELECTED EVENT ------------------------------- #
+
+def on_item_selected(event):
+    selected_item = tree.focus()
+    item = tree.item(selected_item)
+    values = item['values']
+
+    if values:
+        website_entry.delete(0, END)
+        website_entry.insert(0, values[0])
+        username_entry.delete(0, END)
+        username_entry.insert(0, values[1])
+        password_entry.delete(0, END)
+        password_entry.insert(0, values[2])
 
 # ---------------------------- UI SETUP ------------------------------- #
 
@@ -159,9 +191,24 @@ generate_pwd_button.grid(column=2,row=3,columnspan=1)
 add_button = Button(window, text="Add", width=33,command=save_password)
 add_button.grid(column=1,row=4,columnspan=2)
 
+display_all_button = Button(window, text="Display All Data", width=33, command=display_all_data)
+display_all_button.grid(column=1, row=5, columnspan=2)
 
+# 创建显示数据的Treeview
+columns = ("website", "username", "password")
+tree = ttk.Treeview(window, columns=columns, show="headings")
+tree.heading("website", text="Website")
+tree.heading("username", text="Username")
+tree.heading("password", text="Password")
+tree.grid(column=0, row=6, columnspan=3, pady=10)
 
+# 设置列宽
+tree.column("website", width=130)
+tree.column("username", width=130)
+tree.column("password", width=170)
 
+# 绑定双击事件
+tree.bind("<Double-1>", on_item_selected)
 
 
 
