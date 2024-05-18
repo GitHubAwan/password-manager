@@ -8,6 +8,7 @@ import pyperclip #当点击创建密码时自动复制到剪贴板。https://pyp
 
 FONT_NAME = "Courier"
 DATABASE_PATH = "data/password_manager.db"
+user_id_mumber = 0
 # ---------------------------- PASSWORD GENERATOR ------------------------------- #
 
 def generate_password():
@@ -138,6 +139,7 @@ def display_all_data():
 # ---------------------------- ITEM SELECTED EVENT ------------------------------- #
 
 def on_item_selected(event):
+    global user_id_mumber
     selected_item = tree.focus()
     item = tree.item(selected_item)
     values = item['values']
@@ -149,6 +151,116 @@ def on_item_selected(event):
         username_entry.insert(0, values[1])
         password_entry.delete(0, END)
         password_entry.insert(0, values[2])
+
+        # 获取主键值
+        website=website_entry.get()
+        username=username_entry.get()
+        user_id_mumber = get_user_id_by_name_and_age(website,username)
+        print(f"The ID of Charlie is: {user_id_mumber}")
+
+# ---------------------------- 查找ID值 ------------------------------- #
+
+def get_user_id_by_name_and_age(website, username):
+
+    conn=sqlite3.connect(DATABASE_PATH)
+    cursor=conn.cursor()
+
+    cursor.execute('''
+    SELECT id FROM passwords WHERE website = ? AND username = ?
+    ''', (website, username))
+    row = cursor.fetchone()
+
+    conn.close()
+
+    if row:
+        return row[0]
+    else:
+        return None
+
+
+
+# ---------------------------- 更新函数 ------------------------------- #
+def update_website_user_pass_by_id(user_id,website,username,password):
+    conn=sqlite3.connect(DATABASE_PATH)
+    cursor=conn.cursor()
+    cursor.execute('''
+    UPDATE passwords
+    SET website = ?, username = ?, password = ?
+    WHERE id = ?
+    ''', (website,username,password,user_id))
+    # 提交事务并关闭连接
+    conn.commit()
+    conn.close()
+
+# ---------------------------- UPDATE DATA ------------------------------- #
+def update_data():
+    website=website_entry.get()
+    username=username_entry.get()
+    password=password_entry.get()
+    if not website or not username or not password:
+        messagebox.showwarning(
+            title="Oops",
+            message="Please don't leave any fields empty!"
+        )
+    else:
+        # 提示用户确认删除
+        usercheck_message=f"Are you sure you want to update the entry for:\nWebsite: {website}\nUsername: {username}\nPassword: {password}?"
+        user_ckeck=messagebox.askyesno(
+            title="Confirm Deletion",
+            message=usercheck_message,
+            icon='info'
+        )
+        if user_ckeck:
+            update_website_user_pass_by_id(user_id_mumber,website,username,password)
+
+            messagebox.showinfo(title="Success", message="Entry Update successfully!")
+            # 清除Entry中的内容
+            website_entry.delete(0, END)
+            password_entry.delete(0, END)
+
+            # 更新显示的数据
+            display_all_data()
+
+# ---------------------------- DELETE DATA ------------------------------- #
+def delete_data():
+    website=website_entry.get()
+    username=username_entry.get()
+    password=password_entry.get()
+    if not website or not username or not password:
+        messagebox.showwarning(
+            title="Oops",
+            message="Please don't leave any fields empty!"
+        )
+    else:
+        #提示用户确认删除
+        usercheck_message = f"Are you sure you want to delete the entry for:\nWebsite: {website}\nUsername: {username}\nPassword: {password}?"
+        user_ckeck = messagebox.askyesno(
+            title="Confirm Deletion",
+            message=usercheck_message,
+            icon='info'
+        )
+        if user_ckeck:
+            # 连接到SQLite数据库
+            conn=sqlite3.connect(DATABASE_PATH)
+            cursor=conn.cursor()
+            # 删除数据
+            cursor.execute('''
+                DELETE FROM passwords
+                WHERE website = ? AND username = ? AND password = ?
+            ''', (website, username, password))
+            # 提交事务并关闭连接
+            conn.commit()
+            conn.close()
+
+            messagebox.showinfo(title="Success",message="Entry deleted successfully!")
+            # 清除Entry中的内容
+            website_entry.delete(0,END)
+            password_entry.delete(0,END)
+
+            # 更新显示的数据
+            display_all_data()
+
+
 
 # ---------------------------- UI SETUP ------------------------------- #
 
@@ -191,8 +303,18 @@ generate_pwd_button.grid(column=2,row=3,columnspan=1)
 add_button = Button(window, text="Add", width=33,command=save_password)
 add_button.grid(column=1,row=4,columnspan=2)
 
-display_all_button = Button(window, text="Display All Data", width=33, command=display_all_data)
-display_all_button.grid(column=1, row=5, columnspan=2)
+delete_data_button = Button(window, text="Delete Data", width=10, command=delete_data)
+delete_data_button.grid(column=0, row=5, columnspan=1)
+
+update_data_button = Button(window, text="Update Data", width=18, command=update_data)
+update_data_button.grid(column=1, row=5, columnspan=1)
+
+display_all_button = Button(window, text="Display All Data", width=11, command=display_all_data)
+display_all_button.grid(column=2, row=5, columnspan=1)
+
+
+
+
 
 # 创建显示数据的Treeview
 columns = ("website", "username", "password")
