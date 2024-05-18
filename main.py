@@ -1,5 +1,5 @@
 import sqlite3
-import os
+# import os
 from tkinter import *
 from tkinter import messagebox,ttk
 import random
@@ -151,6 +151,10 @@ def on_item_selected(event):
         username_entry.insert(0, values[1])
         password_entry.delete(0, END)
         password_entry.insert(0, values[2])
+
+        # 当点击时密码自动复制到剪贴板。https://pypi.org/project/pyperclip/
+        password=password_entry.get()
+        pyperclip.copy(password)
 
         # 获取主键值
         website=website_entry.get()
