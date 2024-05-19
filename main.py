@@ -2,23 +2,23 @@ import sqlite3
 # import os
 from tkinter import *
 from tkinter import messagebox,ttk
-import random
+# import random
 from password_generator import PasswordGenerator
+from database import *
 import pyperclip #当点击创建密码时自动复制到剪贴板。https://pypi.org/project/pyperclip/
 
 
 FONT_NAME = "Courier"
 DATABASE_PATH = "data/password_manager.db"
-user_id_mumber = 0
+user_id_number = 0
+db = DatabaseManager()
 # ---------------------------- PASSWORD GENERATOR ------------------------------- #
 
 def generate_password():
     password=PasswordGenerator.generate_password()
-
     # 清除已有的文本并插入新生成的密码
     password_entry.delete(0, END)
     password_entry.insert(0, password)
-
 
 # ---------------------------- SAVE PASSWORD ------------------------------- #
 def save_password():
@@ -41,30 +41,7 @@ def save_password():
                                          icon='info')
 
         if user_check:
-            # 连接到SQLite数据库（如果数据库不存在会自动创建）
-            conn = sqlite3.connect(DATABASE_PATH)
-            cursor = conn.cursor()
-
-            # 创建数据表（如果不存在）
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS passwords (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    website TEXT NOT NULL,
-                    username TEXT NOT NULL,
-                    password TEXT NOT NULL
-                )
-            ''')
-
-            # 插入新数据
-            cursor.execute('''
-                INSERT INTO passwords (website, username, password)
-                VALUES (?, ?, ?)
-            ''', data_entry)
-
-            # 提交事务并关闭连接
-            conn.commit()
-            conn.close()
-
+            db.add_password(website,username,password)
             # 清除Entry中的内容
             website_entry.delete(0, END)
             password_entry.delete(0, END)
@@ -72,13 +49,7 @@ def save_password():
 # ---------------------------- SEARCH ------------------------------- #
 def search():
     website=website_entry.get()
-    # 连接到SQLite数据库
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row  # 设置行工厂,这行很关健
-    cursor = conn.cursor()
-    # search数据
-    cursor.execute('''SELECT * FROM passwords WHERE website = ?''', (website,))
-    rows=cursor.fetchall()
+    rows = db.search_password(website)
 
     if rows:
         # 如果找到匹配的数据
@@ -90,11 +61,6 @@ def search():
         # 如果没有找到匹配的数据
         messagebox.showinfo(title="Form", message="No details found for the specified website.", icon='info')
 
-    # 提交事务并关闭连接
-    conn.commit()
-    conn.close()
-
-
     # 清除Entry中的内容
     website_entry.delete(0, END)
     password_entry.delete(0, END)
@@ -102,13 +68,7 @@ def search():
 # ---------------------------- Display ALL DATA ------------------------------- #
 
 def display_all_data():
-    # 连接到SQLite数据库
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
-    cursor.execute('''SELECT * FROM passwords''')
-    rows = cursor.fetchall()
-    conn.close()
+    rows = db.get_all_passwords()
 
     # 清空Treeview内容
     for item in tree.get_children():
@@ -122,7 +82,7 @@ def display_all_data():
 # ---------------------------- ITEM SELECTED EVENT ------------------------------- #
 
 def on_item_selected(event):
-    global user_id_mumber
+    global user_id_number
     selected_item = tree.focus()
     item = tree.item(selected_item)
     values = item['values']
@@ -142,42 +102,8 @@ def on_item_selected(event):
         # 获取主键值
         website=website_entry.get()
         username=username_entry.get()
-        user_id_mumber = get_user_id_by_name_and_age(website,username)
-        print(f"The ID of Charlie is: {user_id_mumber}")
-
-# ---------------------------- 查找ID值 ------------------------------- #
-
-def get_user_id_by_name_and_age(website, username):
-
-    conn=sqlite3.connect(DATABASE_PATH)
-    cursor=conn.cursor()
-
-    cursor.execute('''
-    SELECT id FROM passwords WHERE website = ? AND username = ?
-    ''', (website, username))
-    row = cursor.fetchone()
-
-    conn.close()
-
-    if row:
-        return row[0]
-    else:
-        return None
-
-
-
-# ---------------------------- 更新函数 ------------------------------- #
-def update_website_user_pass_by_id(user_id,website,username,password):
-    conn=sqlite3.connect(DATABASE_PATH)
-    cursor=conn.cursor()
-    cursor.execute('''
-    UPDATE passwords
-    SET website = ?, username = ?, password = ?
-    WHERE id = ?
-    ''', (website,username,password,user_id))
-    # 提交事务并关闭连接
-    conn.commit()
-    conn.close()
+        user_id_number = db.get_user_id_by_website_and_username(website, username)
+        print(f"The ID of Charlie is: {user_id_number}")
 
 # ---------------------------- UPDATE DATA ------------------------------- #
 def update_data():
@@ -198,7 +124,7 @@ def update_data():
             icon='info'
         )
         if user_ckeck:
-            update_website_user_pass_by_id(user_id_mumber,website,username,password)
+            db.update_password(user_id_number, website, username, password)
 
             messagebox.showinfo(title="Success", message="Entry Update successfully!")
             # 清除Entry中的内容
@@ -227,17 +153,7 @@ def delete_data():
             icon='info'
         )
         if user_ckeck:
-            # 连接到SQLite数据库
-            conn=sqlite3.connect(DATABASE_PATH)
-            cursor=conn.cursor()
-            # 删除数据
-            cursor.execute('''
-                DELETE FROM passwords
-                WHERE website = ? AND username = ? AND password = ?
-            ''', (website, username, password))
-            # 提交事务并关闭连接
-            conn.commit()
-            conn.close()
+            db.delete_password(website, username, password)
 
             messagebox.showinfo(title="Success",message="Entry deleted successfully!")
             # 清除Entry中的内容
